@@ -1,5 +1,15 @@
-version: "3.3"
+version: "3.3" 
 services:
+  letsencrypt:
+    container_name: 'certbot-service'
+    image: certbot/certbot:v1.17.0
+    command: sh -c "certbot certonly --webroot -w /tmp/acme_challenge -d $DOMAIN --text --agree-tos --email $EMAIL --rsa-key-size 4096 --verbose --keep-until-expiring --preferred-challenges=http"
+    entrypoint: ""
+    volumes:
+      - "/etc/letsencrypt:/etc/letsencrypt"
+      - "/tmp/acme_challenge:/tmp/acme_challenge"
+    environment:
+      - TERM=xterm
   nginx:
     container_name: 'nginx-service'
     build:
@@ -8,13 +18,12 @@ services:
     ports:
       - 80:80
       - 443:443
+    environment:
+      - DOMAIN=$DOMAIN
+      - EMAIL=$EMAIL
     volumes:
       - ./config:/config
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /tmp/acme_challenge:/tmp/acme_challenge
-    networks:
-      - app
+    command: /bin/sh -c "envsubst < /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/nginx.conf && nginx -g 'daemon off;';" 
     restart: always
-networks:
-  app:
-    driver: bridge
